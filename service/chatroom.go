@@ -1,5 +1,11 @@
 package chatterbox
 
+import (
+	"fmt"
+	"io"
+	"strings"
+)
+
 type Member struct {
 	name     string
 	username string
@@ -50,4 +56,37 @@ func (r *Room) ReadFromIndex(index int) *Message {
 
 func (r *Room) NumOfMessages() int {
 	return r.MessageBox.count
+}
+
+func ProcessRoomChat(roomId, text string, w *io.WriteCloser) {
+	txt := strings.TrimSpace(text)
+	switch {
+	default:
+		fmt.Printf("You typed \"%s\"\n", text)
+		return
+	case strings.HasPrefix(txt, "/send"):
+		fmt.Println("Sending money")
+		return
+	case txt == "/leave":
+		fmt.Println("Leave room")
+		return
+	case txt == "/leave":
+		fmt.Println("Leave room")
+		return
+	}
+}
+
+func ProcessGlobalChat(text string) {
+	txt := strings.TrimSpace(text)
+	switch {
+	default:
+		fmt.Printf("You typed \"%s\"\n", text)
+		return
+	case strings.HasPrefix(txt, "/join"):
+		fmt.Println("Joining room")
+		return
+	case strings.HasPrefix(txt, "/create"):
+		fmt.Println("Creating a room")
+		return
+	}
 }

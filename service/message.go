@@ -1,31 +1,11 @@
 package chatterbox
 
-import (
-	"fmt"
-	"strings"
-)
-
 type MessageType int
 
 const (
 	Regular   MessageType = 0
 	SendMoney MessageType = 1
 )
-
-func DecodeText(text string) {
-	txt := strings.TrimSpace(text)
-	switch {
-	default:
-		fmt.Printf("You typed \"%s\"\n", text)
-		return
-	case strings.HasPrefix(txt, "/join"):
-		fmt.Println("Joining room")
-		return
-	case strings.HasPrefix(txt, "/create"):
-		fmt.Println("Creating a room")
-		return
-	}
-}
 
 type Message struct {
 	Type    MessageType
