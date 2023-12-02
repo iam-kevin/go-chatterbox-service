@@ -1,5 +1,5 @@
 package chatterbox
 
-type InMemberDB struct {
+type ImMemoryDB struct {
 	Members Member
 }
