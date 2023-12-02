@@ -1,30 +1,29 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 
+	chatterbox "iam-kevin/chatterbox/service"
+
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
-var (
-	upgrader = websocket.Upgrader{
-		ReadBufferSize: 1024,
-	}
-	mux = http.NewServeMux()
-)
+var upgrader = websocket.Upgrader{
+	ReadBufferSize: 1024,
+}
 
 func main() {
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	r := mux.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Sanity checking...")
 	})
 
-	mux.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			w.WriteHeader(500)
@@ -50,20 +49,18 @@ func main() {
 			d, _ := io.ReadAll(r)
 			json.Unmarshal(d, &body)
 
+			chatterbox.DecodeText(body.Message)
+
 			// show the received message
 			fmt.Printf("received: %s\n", body.Message)
 		}
 	})
 
-	server := &http.Server{
-		Addr: ":8080",
-		BaseContext: func(l net.Listener) context.Context {
-			return context.Background()
-		},
-		Handler: mux,
-	}
+	r.HandleFunc("/room/{id}/chat", func(w http.ResponseWriter, r *http.Request) {
+		// ..
+	})
 
-	log.Fatal(server.ListenAndServe())
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
 
 type ChatMessage struct {
