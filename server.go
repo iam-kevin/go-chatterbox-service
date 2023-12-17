@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"time"
 
+	db "iam-kevin/chatterbox/data"
 	service "iam-kevin/chatterbox/service"
 
 	"github.com/go-chi/chi/v5"
@@ -17,12 +21,10 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize: 1024,
 }
 
+const CHATTERBOX_DB string = "cbd"
+
 func main() {
 	r := chi.NewRouter()
-
-	// create datastores
-	// memberDb := db.CreateMemberDB()
-	// roomsdb := db.CreateRoomDB()
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Sanity checking...")
@@ -37,6 +39,7 @@ func main() {
 		}
 
 		defer conn.Close()
+		cdb := r.Context().Value(CHATTERBOX_DB).(db.ChatterboxDB)
 
 		//  reaf from the chat endpoint
 		for {
@@ -50,60 +53,26 @@ func main() {
 				panic("Couldn't read the message dude! Fail badly")
 			}
 
-			var body ChatMessage
-			d, _ := io.ReadAll(r)
-			json.Unmarshal(d, &body)
-
-			service.ProcessGlobalChat(body.Message)
-
-			// show the received message
-			fmt.Printf("received: %s\n", body.Message)
-		}
-	})
-
-	r.HandleFunc("/room/{id}/chat", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			w.WriteHeader(500)
-			fmt.Fprintf(w, "Couldn't upgarde the server with WS connection")
-			return
-		}
-
-		defer conn.Close()
-		roomId := chi.URLParam(r, "id")
-
-		for {
-			msgType, r, err := conn.NextReader()
-			if err != nil {
-				fmt.Fprintf(w, "There was a problem when reading the message")
-				return
-			}
-
-			if msgType != websocket.TextMessage {
-				panic("Couldn't read the message dude! Fail badly")
-			}
-
-			var body RoomMessage
+			var body db.ChatMessage
 			d, _ := io.ReadAll(r)
 			json.Unmarshal(d, &body)
 
 			w, _ := conn.NextWriter(websocket.BinaryMessage)
 
-			// precess the chat room
-			service.ProcessRoomChat(roomId, body.Message, &w)
-
-			// show the received message
-			fmt.Printf("Received: %s\n", body.Message)
+			mm := db.Member{Name: "Kevin", Username: "iam-kevin"}
+			service.ProcessChat(&cdb, &mm, body, &w)
 		}
 	})
 
-	log.Fatal(http.ListenAndServe(":8080", r))
-}
+	server := http.Server{
+		Handler:           r,
+		Addr:              ":8080",
+		ReadHeaderTimeout: 3 * time.Second,
+		BaseContext: func(l net.Listener) context.Context {
+			ctx := context.WithValue(context.Background(), CHATTERBOX_DB, db.CreateInMemoryInstance())
+			return ctx
+		},
+	}
 
-type ChatMessage struct {
-	Message string `json:"message"`
-}
-
-type RoomMessage struct {
-	Message string `json:"message"`
+	log.Fatal(server.ListenAndServe())
 }
