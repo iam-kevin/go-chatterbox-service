@@ -7,9 +7,9 @@ import (
 	"log"
 	"net/http"
 
-	chatterbox "iam-kevin/chatterbox/service"
+	service "iam-kevin/chatterbox/service"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 )
 
@@ -18,8 +18,13 @@ var upgrader = websocket.Upgrader{
 }
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	r := chi.NewRouter()
+
+	// create datastores
+	// memberDb := db.CreateMemberDB()
+	// roomsdb := db.CreateRoomDB()
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Sanity checking...")
 	})
 
@@ -49,7 +54,7 @@ func main() {
 			d, _ := io.ReadAll(r)
 			json.Unmarshal(d, &body)
 
-			chatterbox.ProcessGlobalChat(body.Message)
+			service.ProcessGlobalChat(body.Message)
 
 			// show the received message
 			fmt.Printf("received: %s\n", body.Message)
@@ -65,7 +70,7 @@ func main() {
 		}
 
 		defer conn.Close()
-		roomId := mux.Vars(r)["id"]
+		roomId := chi.URLParam(r, "id")
 
 		for {
 			msgType, r, err := conn.NextReader()
@@ -85,7 +90,7 @@ func main() {
 			w, _ := conn.NextWriter(websocket.BinaryMessage)
 
 			// precess the chat room
-			chatterbox.ProcessRoomChat(roomId, body.Message, &w)
+			service.ProcessRoomChat(roomId, body.Message, &w)
 
 			// show the received message
 			fmt.Printf("Received: %s\n", body.Message)
