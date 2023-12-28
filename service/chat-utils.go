@@ -127,15 +127,7 @@ func CleanName(name string) string {
 func ChatCreateRoom(db *sqlx.DB, name, senderId string) (*Chatroom, error) {
 	genid := cuid2.Generate()
 	id := "room_" + genid
-	// name := "Room " + genid
-	// values := strings.Split(txt, " ")
 
-	// if len(values) > 2 {
-	// 	name = values[1]
-	// }
-
-	// // generate id
-	// cdb.CreateRoom(member, id, name, "", 10)
 	var chatroom Chatroom
 	err := db.Get(&chatroom, `insert into "room" (id, name, user_id) values ($1, $2, $3) returning id, name, user_id`, id, name, senderId)
 	if err != nil {
