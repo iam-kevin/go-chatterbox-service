@@ -1,0 +1,15 @@
+{
+  "name": "go-chatterbox-service",
+  "version": "1.0.0",
+  "description": "Offers the service for chatterbox",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "prisma": "^5.7.1"
+  }
+}
