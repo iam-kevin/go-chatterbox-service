@@ -16,6 +16,8 @@ import (
 	service "iam-kevin/chatterbox/service"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/render"
 	"github.com/gorilla/websocket"
 
 	"github.com/jmoiron/sqlx"
@@ -31,13 +33,20 @@ const CHATTERBOX_DB string = "cbd"
 func main() {
 	r := chi.NewRouter()
 
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.URLFormat)
+	r.Use(render.SetContentType(render.ContentTypeJSON))
+
 	db, err := sqlx.Connect("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	r.Get("/user", handlers.HandlerGetUser)
-	r.Post("/create-user", handlers.HandleCreateUser)
+	r.Post("/set-user", handlers.HandleSetUser)
+	// r.Get("/room")
 
 	// SSE
 	r.HandleFunc("/events/rooms", func(w http.ResponseWriter, r *http.Request) {

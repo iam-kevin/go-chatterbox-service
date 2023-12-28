@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/render"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const _CostOfPassword = 10
 
-func HandleCreateUser(w http.ResponseWriter, r *http.Request) {
+func HandleSetUser(w http.ResponseWriter, r *http.Request) {
 	var input ToSaveUser
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
@@ -53,10 +54,11 @@ type ToSaveUser struct {
 
 func HandlerGetUser(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(r.URL.Query().Get("username"))
+	w.Header().Set("Content-Type", "application/json")
 
 	if username == "" {
 		w.WriteHeader(400)
-		fmt.Fprintf(w, `{ "code": "bad-input", "message": "Make sure to specify the user", }`)
+		render.JSON(w, r, []byte(`{ "code": "bad-input", "message": "Make sure to specify the user", }`))
 		return
 	}
 
@@ -65,12 +67,13 @@ func HandlerGetUser(w http.ResponseWriter, r *http.Request) {
 	err := db.Get(&user, `select "id", "name" from "user" where id=$1`, username)
 	if err != nil {
 		w.WriteHeader(404)
-		fmt.Fprintf(w, `{ "code": "not-found", "message": "There's no such user. You can create the user", }`)
+		render.JSON(w, r, (`{ "code": "not-found", "message": "There's no such user. You can create the user", }`))
 		return
 	}
 
 	resUser, _ := json.Marshal(user)
-	fmt.Fprintf(w, "%s", resUser)
+	w.WriteHeader(200)
+	render.JSON(w, r, resUser)
 }
 
 type User struct {
