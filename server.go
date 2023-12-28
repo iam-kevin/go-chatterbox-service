@@ -39,6 +39,42 @@ func main() {
 	r.Get("/user", handlers.HandlerGetUser)
 	r.Post("/create-user", handlers.HandleCreateUser)
 
+	// SSE
+	r.HandleFunc("/events/rooms", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		db := r.Context().Value("_DB").(*sqlx.DB)
+		for {
+			// Send an event
+			fmt.Fprintf(w, "data: The server time is %v\n\n", time.Now().Format(time.RFC1123))
+			service.EvtCheckRooms(db, w)
+
+			// Flush the data immediately instead of buffering it for later.
+			if flusher, ok := w.(http.Flusher); ok {
+				flusher.Flush()
+			} else {
+				log.Println("Warning: Streaming not supported!")
+				break
+			}
+
+			time.Sleep(2 * time.Second) // Adjust the frequency of messages as needed
+
+			// Check if the client is still connected
+			if cn, ok := w.(http.CloseNotifier); ok {
+				select {
+				case <-cn.CloseNotify():
+					log.Println("Client has closed the connection")
+					return
+				default:
+					// continue
+				}
+			}
+		}
+	})
+
 	r.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {

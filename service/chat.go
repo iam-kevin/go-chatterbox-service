@@ -1,9 +1,11 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -13,6 +15,24 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/nrednav/cuid2"
 )
+
+func EvtCheckRooms(db *sqlx.DB, w http.ResponseWriter) {
+	var rooms []Chatroom
+	err := db.Select(&rooms, `select id, user_id, name, from "rooms"`)
+	if err != nil {
+		w.WriteHeader(501)
+		fmt.Fprintf(w, `{ "error": "DB_FETCH", "message": "unable to fetch the results" }`)
+		return
+	}
+
+	data, err := json.Marshal(rooms)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w.WriteHeader(200)
+	fmt.Fprintf(w, `%s`, data)
+}
 
 // truncate the message box
 const MAX_CHARACTERS = 160
