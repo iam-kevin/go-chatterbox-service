@@ -8,13 +8,18 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
-	db "iam-kevin/chatterbox/data"
+	data "iam-kevin/chatterbox/data"
+	"iam-kevin/chatterbox/handlers"
 	service "iam-kevin/chatterbox/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
 var upgrader = websocket.Upgrader{
@@ -26,9 +31,13 @@ const CHATTERBOX_DB string = "cbd"
 func main() {
 	r := chi.NewRouter()
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Sanity checking...")
-	})
+	db, err := sqlx.Connect("postgres", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	r.Get("/user", handlers.HandlerGetUser)
+	r.Post("/create-user", handlers.HandleCreateUser)
 
 	r.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -39,7 +48,7 @@ func main() {
 		}
 
 		defer conn.Close()
-		cdb := r.Context().Value(CHATTERBOX_DB).(db.ChatterboxDB)
+		cdb := r.Context().Value(CHATTERBOX_DB).(data.ChatterboxDB)
 
 		//  reaf from the chat endpoint
 		for {
@@ -53,23 +62,23 @@ func main() {
 				panic("Couldn't read the message dude! Fail badly")
 			}
 
-			var body db.ChatMessage
+			var body data.ChatMessage
 			d, _ := io.ReadAll(r)
 			json.Unmarshal(d, &body)
 
 			w, _ := conn.NextWriter(websocket.BinaryMessage)
 
-			mm := db.Member{Name: "Kevin", Username: "iam-kevin"}
+			mm := data.Member{Name: "Kevin", Username: "iam-kevin"}
 			service.ProcessChat(&cdb, &mm, body, &w)
 		}
 	})
 
 	server := http.Server{
 		Handler:           r,
-		Addr:              ":8080",
+		Addr:              fmt.Sprintf(":%v", os.Getenv("APP_PORT")),
 		ReadHeaderTimeout: 3 * time.Second,
 		BaseContext: func(l net.Listener) context.Context {
-			ctx := context.WithValue(context.Background(), CHATTERBOX_DB, db.CreateInMemoryInstance())
+			ctx := context.WithValue(context.Background(), "_DB", db)
 			return ctx
 		},
 	}

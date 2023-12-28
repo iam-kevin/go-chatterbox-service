@@ -27,7 +27,10 @@ func ProcessChat(cdb *db.ChatterboxDB, member *db.Member, message db.ChatMessage
 	switch {
 	case strings.HasPrefix(txt, "/join"):
 		{
-			fmt.Fprint(w, `{"message": "You are joining this group"}`)
+			fmt.Fprint(w, `{"message": "You are joining this group", "room": {
+				"id": "123",
+				"name": "TheCoolKidsClub"
+			}}`)
 			return
 		}
 	case strings.HasPrefix(txt, "/send"):
