@@ -32,10 +32,7 @@ func ProcessChat(db *sqlx.DB, cdb *db.ChatterboxDB, message db.ChatMessage, wptr
 	switch {
 	case strings.HasPrefix(txt, "/join"):
 		{
-			fmt.Fprint(w, `{"message": "You are joining this group", "room": {
-				"id": "123",
-				"name": "TheCoolKidsClub"
-			}}`)
+			// checks it exists in
 			return
 		}
 	case strings.HasPrefix(txt, "/send"):
@@ -56,7 +53,7 @@ func ProcessChat(db *sqlx.DB, cdb *db.ChatterboxDB, message db.ChatMessage, wptr
 				log.Default().Print(err)
 				msg := OutgoingMessage{
 					Type:       TypeMessage,
-					Message:    "failed",
+					Message:    fmt.Sprintf("Couldn't create room '%s'", chatroom.Name),
 					Timestamp:  time.Now().UTC().Format(time.DateTime),
 					UserId:     message.SenderId,
 					OnlyByUser: true,
@@ -81,6 +78,7 @@ func ProcessChat(db *sqlx.DB, cdb *db.ChatterboxDB, message db.ChatMessage, wptr
 			fmt.Println("Leave room")
 			return
 		}
+	// echo's to everyone
 	default:
 		{
 			out := OutgoingMessage{
@@ -90,6 +88,7 @@ func ProcessChat(db *sqlx.DB, cdb *db.ChatterboxDB, message db.ChatMessage, wptr
 				UserId:     message.SenderId,
 				OnlyByUser: false,
 			}
+
 			fmt.Fprintf(w, `%s`, out.Json())
 			return
 		}
