@@ -1,0 +1,13 @@
+version: "3.1"
+
+services:
+    postgres-chatterbox:
+        image: postgres:15.0
+        restart: always
+        ports:
+            - "11132:5432"
+        environment:
+            - PGDATA=/var/lib/postgresql/data/pgdata
+            - POSTGRES_PASSWORD=example
+        volumes:
+            - ./.docker/postgresql/data/:/var/lib/postgresql/data/pgdata
