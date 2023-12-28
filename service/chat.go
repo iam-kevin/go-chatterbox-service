@@ -18,8 +18,9 @@ import (
 
 func EvtCheckRooms(db *sqlx.DB, w http.ResponseWriter) {
 	var rooms []Chatroom
-	err := db.Select(&rooms, `select id, user_id, name, from "rooms"`)
+	err := db.Select(&rooms, `select id, user_id, name from "room"`)
 	if err != nil {
+		log.Fatal(err)
 		w.WriteHeader(501)
 		fmt.Fprintf(w, `{ "error": "DB_FETCH", "message": "unable to fetch the results" }`)
 		return
@@ -30,7 +31,6 @@ func EvtCheckRooms(db *sqlx.DB, w http.ResponseWriter) {
 		log.Fatal(err)
 	}
 
-	w.WriteHeader(200)
 	fmt.Fprintf(w, `%s`, data)
 }
 
