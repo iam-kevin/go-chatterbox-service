@@ -55,10 +55,9 @@ type ToSaveUser struct {
 func HandlerGetUser(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(r.URL.Query().Get("username"))
 	w.Header().Set("Content-Type", "application/json")
-
 	if username == "" {
 		w.WriteHeader(400)
-		render.JSON(w, r, []byte(`{ "code": "bad-input", "message": "Make sure to specify the user", }`))
+		render.JSON(w, r, []byte(`{ "code": "bad-input", "message": "Make sure to specify the user" }`))
 		return
 	}
 
@@ -67,13 +66,12 @@ func HandlerGetUser(w http.ResponseWriter, r *http.Request) {
 	err := db.Get(&user, `select "id", "name" from "user" where id=$1`, username)
 	if err != nil {
 		w.WriteHeader(404)
-		render.JSON(w, r, (`{ "code": "not-found", "message": "There's no such user. You can create the user", }`))
+		render.JSON(w, r, (`{ "code": "not-found", "message": "There's no such user. You can create the user" }`))
 		return
 	}
 
-	resUser, _ := json.Marshal(user)
 	w.WriteHeader(200)
-	render.JSON(w, r, resUser)
+	render.JSON(w, r, user)
 }
 
 type User struct {
