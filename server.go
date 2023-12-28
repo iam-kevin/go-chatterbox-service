@@ -48,7 +48,8 @@ func main() {
 		}
 
 		defer conn.Close()
-		cdb := r.Context().Value(CHATTERBOX_DB).(data.ChatterboxDB)
+		db := r.Context().Value("_DB").(*sqlx.DB)
+		inmemory := r.Context().Value("_INMEMORY").(*data.ChatterboxDB)
 
 		//  reaf from the chat endpoint
 		for {
@@ -67,9 +68,7 @@ func main() {
 			json.Unmarshal(d, &body)
 
 			w, _ := conn.NextWriter(websocket.BinaryMessage)
-
-			mm := data.Member{Name: "Kevin", Username: "iam-kevin"}
-			service.ProcessChat(&cdb, &mm, body, &w)
+			service.ProcessChat(db, inmemory, body, &w)
 		}
 	})
 
@@ -78,8 +77,9 @@ func main() {
 		Addr:              fmt.Sprintf(":%v", os.Getenv("APP_PORT")),
 		ReadHeaderTimeout: 3 * time.Second,
 		BaseContext: func(l net.Listener) context.Context {
-			ctx := context.WithValue(context.Background(), "_DB", db)
-			return ctx
+			ctx := context.Background()
+			ctx = context.WithValue(ctx, "_DB", db)
+			return context.WithValue(ctx, "_INMEMORY", data.CreateInMemoryInstance())
 		},
 	}
 
