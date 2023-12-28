@@ -18,7 +18,7 @@ import (
 // truncate the message box
 const MAX_CHARACTERS = 160
 
-func ProcessChat(db *sqlx.DB, cdb *db.ChatterboxDB, message db.ChatMessage, wptr *io.WriteCloser) {
+func OnReceiveMessage(db *sqlx.DB, cdb *db.ChatterboxDB, message db.ChatMessage, wptr *io.WriteCloser) {
 	w := *wptr
 	txt := strings.TrimSpace(message.Message)
 

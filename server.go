@@ -68,7 +68,7 @@ func main() {
 			json.Unmarshal(d, &body)
 
 			w, _ := conn.NextWriter(websocket.BinaryMessage)
-			service.ProcessChat(db, inmemory, body, &w)
+			service.OnReceiveMessage(db, inmemory, body, &w)
 		}
 	})
 
