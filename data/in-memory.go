@@ -10,8 +10,8 @@ type ChatterboxDB struct {
 	Rooms *RoomDatastore
 }
 
-func CreateInMemoryInstance() ChatterboxDB {
-	return ChatterboxDB{
+func CreateInMemoryInstance() *ChatterboxDB {
+	return &ChatterboxDB{
 		M:     CreateMemberDB(),
 		Rooms: CreateRoomDB(),
 	}
