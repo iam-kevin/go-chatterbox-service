@@ -1,15 +1,14 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"regexp"
 	"strings"
-	"time"
 
 	db "iam-kevin/chatterbox/data"
+	messages "iam-kevin/chatterbox/message"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nrednav/cuid2"
@@ -30,14 +29,61 @@ func OnReceiveMessage(db *sqlx.DB, cdb *db.ChatterboxDB, message db.ChatMessage,
 	defer w.Close()
 
 	switch {
+	// shouts to everyone that user has joined group
+	// pattern is /join <room-id>
 	case strings.HasPrefix(txt, "/join"):
 		{
-			// checks it exists in
+			roomId := strings.Replace(txt, "/join", "", 1)
+
+			// search the room
+			var room Chatroom
+			db.Get(&room, `select * from "room" where id = $1`, roomId)
+
+			// TODO: save in cache
+
+			// checks if user in room already
+			out := messages.New(
+				&messages.Msg{
+					Type:    messages.TypeJoinRoom,
+					Message: fmt.Sprintf("%s has joined the room", message.SenderId),
+					RoomId:  message.RoomId,
+					UserId:  &message.SenderId,
+				},
+			)
+
+			fmt.Fprintf(w, `%s`, out.Json())
 			return
 		}
+	// expected pattern of this chat message is
+	//  /send <amount> <username>
+	//  the <username> should not be of self
 	case strings.HasPrefix(txt, "/send"):
 		{
-			fmt.Println("Sending money")
+			if message.Pin == nil {
+				out := messages.New(
+					&messages.Msg{
+						Type:         messages.TypeJoinRoom,
+						Message:      ("You need to send PIN before we can close this feature"),
+						RoomId:       message.RoomId,
+						UserId:       &message.SenderId,
+						OnlyToSender: true,
+					},
+				)
+				fmt.Fprintf(w, `%s`, out.Json())
+
+			}
+
+			out := messages.New(
+				&messages.Msg{
+					Type:    messages.TypeJoinRoom,
+					Message: ("We are still building out this feature"),
+					// Message: fmt.Sprintf("%s has joined the room", message.SenderId),
+					RoomId: message.RoomId,
+					UserId: &message.SenderId,
+				},
+			)
+
+			fmt.Fprintf(w, `%s`, out.Json())
 			return
 		}
 	// expected pattern of this chat is
@@ -51,70 +97,55 @@ func OnReceiveMessage(db *sqlx.DB, cdb *db.ChatterboxDB, message db.ChatMessage,
 			chatroom, err := ChatCreateRoom(db, CleanName(roomName), message.SenderId)
 			if err != nil {
 				log.Default().Print(err)
-				msg := OutgoingMessage{
-					Type:       TypeMessage,
-					Message:    fmt.Sprintf("Couldn't create room '%s'", chatroom.Name),
-					Timestamp:  time.Now().UTC().Format(time.DateTime),
-					UserId:     message.SenderId,
-					OnlyByUser: true,
-				}
+				msg := messages.New(
+					&messages.Msg{
+						Type:         messages.TypeCreateRoom,
+						Message:      fmt.Sprintf("Couldn't create room '%s'", chatroom.Name),
+						UserId:       &message.SenderId,
+						OnlyToSender: true,
+					},
+				)
 				fmt.Fprintf(w, `%s`, msg.Json())
 				return
 			}
 
-			msg := OutgoingMessage{
-				Type:       TypeCreateRoom,
-				Message:    fmt.Sprintf("Room '%s' has been created", chatroom.Name),
-				Timestamp:  time.UTC.String(),
-				RoomId:     &chatroom.Rid,
-				UserId:     message.SenderId,
-				OnlyByUser: true,
-			}
+			msg := messages.New(
+				&messages.Msg{
+					Type:         messages.TypeCreateRoom,
+					Message:      fmt.Sprintf("Room '%s' has been created", chatroom.Name),
+					RoomId:       message.RoomId,
+					UserId:       &message.SenderId,
+					OnlyToSender: true,
+				},
+			)
 			fmt.Fprintf(w, "%s", msg.Json())
 			return
 		}
 	case txt == "/leave":
 		{
-			fmt.Println("Leave room")
+			out := messages.New(
+				&messages.Msg{
+					Type:    messages.TypeLeaveRoom,
+					Message: fmt.Sprintf("%s has left the room", message.SenderId),
+					UserId:  &message.SenderId,
+					RoomId:  message.RoomId,
+				},
+			)
+			fmt.Fprintf(w, `%s`, out.Json())
 			return
 		}
 	// echo's to everyone
 	default:
 		{
-			out := OutgoingMessage{
-				Type:       TypeMessage,
-				Message:    message.Message,
-				Timestamp:  time.Now().UTC().Format(time.DateTime),
-				UserId:     message.SenderId,
-				OnlyByUser: false,
-			}
-
+			out := messages.New(
+				&messages.Msg{
+					Message: message.Message,
+				},
+			)
 			fmt.Fprintf(w, `%s`, out.Json())
 			return
 		}
 	}
-}
-
-const (
-	TypeMessage    = "message"
-	TypeCreateRoom = "create-room"
-)
-
-type OutgoingMessage struct {
-	Type      string `json:"type"`
-	Message   string `json:"message"`
-	Timestamp string `json:"timestamp"`
-	// optional
-	RoomId     *string `json:"rid"`
-	UserId     string  `json:"uid"`
-	OnlyByUser bool    `json:"onlyme"`
-}
-
-func (o *OutgoingMessage) Json() []byte {
-	message, _ := json.Marshal(
-		o)
-
-	return message
 }
 
 func CleanName(name string) string {

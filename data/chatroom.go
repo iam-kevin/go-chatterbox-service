@@ -15,6 +15,7 @@ type Message struct {
 
 type ChatMessage struct {
 	RoomId   *string `json:"room"`
+	Pin      *string `json:"pin"`
 	Message  string  `json:"message"`
 	SenderId string  `json:"senderId"`
 }
@@ -34,7 +35,6 @@ type Room struct {
 	members    []Member
 	owner      Member
 	name       string // Name of the chatroom
-	desc       string // description of the chatroom
 	id         string // chatroon id (used to join)
 	MessageBox *MessageBox
 }

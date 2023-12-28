@@ -6,34 +6,13 @@ import (
 )
 
 type ChatterboxDB struct {
-	M     *MemberDatastore
 	Rooms *RoomDatastore
 }
 
 func CreateInMemoryInstance() *ChatterboxDB {
 	return &ChatterboxDB{
-		M:     CreateMemberDB(),
 		Rooms: CreateRoomDB(),
 	}
-}
-
-// Whener all the members are stored
-type MemberDatastore struct {
-	members map[string]*Member
-}
-
-func (m *MemberDatastore) GetMember(name string) (*Member, error) {
-	val, ok := m.members[name]
-	if !ok {
-		return nil, fmt.Errorf("not-found: this user doesn't exist")
-	}
-
-	return val, nil
-}
-
-func CreateMemberDB() *MemberDatastore {
-	membersdb := MemberDatastore{members: make(map[string]*Member, 10)}
-	return &membersdb
 }
 
 func (r *ChatterboxDB) CreateRoom(owner *Member, id, name, desc string, memberCount int) *Room {
@@ -43,16 +22,12 @@ func (r *ChatterboxDB) CreateRoom(owner *Member, id, name, desc string, memberCo
 	room := Room{
 		id:    id,
 		name:  name,
-		desc:  desc,
 		owner: *owner,
 		MessageBox: &MessageBox{
 			count:    0,
 			messages: &messages,
 		},
 	}
-
-	// add members
-	r.M.members[owner.Username] = owner
 
 	// add rooms
 	r.Rooms.rooms[id] = room
