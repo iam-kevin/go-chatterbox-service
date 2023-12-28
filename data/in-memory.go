@@ -22,6 +22,15 @@ type MemberDatastore struct {
 	members map[string]*Member
 }
 
+func (m *MemberDatastore) GetMember(name string) (*Member, error) {
+	val, ok := m.members[name]
+	if !ok {
+		return nil, fmt.Errorf("not-found: this user doesn't exist")
+	}
+
+	return val, nil
+}
+
 func CreateMemberDB() *MemberDatastore {
 	membersdb := MemberDatastore{members: make(map[string]*Member, 10)}
 	return &membersdb
