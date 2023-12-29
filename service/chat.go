@@ -1,11 +1,9 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"regexp"
 	"strings"
 
@@ -15,24 +13,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/nrednav/cuid2"
 )
-
-func EvtCheckRooms(db *sqlx.DB, w http.ResponseWriter) {
-	var rooms []Chatroom
-	err := db.Select(&rooms, `select id, user_id, name from "room"`)
-	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(501)
-		fmt.Fprintf(w, `{ "error": "DB_FETCH", "message": "unable to fetch the results" }`)
-		return
-	}
-
-	data, err := json.Marshal(rooms)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Fprintf(w, `%s`, data)
-}
 
 // truncate the message box
 const MAX_CHARACTERS = 160
@@ -188,7 +168,8 @@ func ChatCreateRoom(db *sqlx.DB, name, senderId string) (*Chatroom, error) {
 }
 
 type Chatroom struct {
-	Name    string `db:"name" json:"room"`
-	OwnerId string `db:"user_id" json:"ownerId"`
-	Rid     string `db:"id" json:"room_id"`
+	Name      string  `db:"name" json:"room_name"`
+	OwnerId   string  `db:"user_id" json:"owner_nickname"`
+	Rid       string  `db:"id" json:"room_id"`
+	Timestamp *string `db:"created_at" json:"timestamp"`
 }

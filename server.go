@@ -20,6 +20,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/gorilla/websocket"
+	"github.com/r3labs/sse/v2"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -34,6 +35,16 @@ const CHATTERBOX_DB string = "cbd"
 func main() {
 	r := chi.NewRouter()
 
+	sseServer := sse.New()
+	sseServer.CreateStream("rooms")
+	sseServer.AutoReplay = false
+	sseServer.AutoStream = true
+	sseServer.Headers = map[string]string{
+		"Content-Type":  "text/event-stream",
+		"Cache-Control": "no-cache",
+		"Connection":    "keep-alive",
+	}
+
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -42,11 +53,11 @@ func main() {
 
 	// enable cors
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   []string{"https://*", "http://*", "http://localhost:5173"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 
@@ -60,40 +71,34 @@ func main() {
 	// r.Get("/room")
 
 	// SSE
-	r.HandleFunc("/events/rooms", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+	r.HandleFunc("/events", sseServer.ServeHTTP)
 
-		db := r.Context().Value("_DB").(*sqlx.DB)
+	go func(db *sqlx.DB, sseServer *sse.Server) {
 		for {
-			// Send an event
-			fmt.Fprintf(w, "data: The server time is %v\n\n", time.Now().Format(time.RFC1123))
-			service.EvtCheckRooms(db, w)
-
-			// Flush the data immediately instead of buffering it for later.
-			if flusher, ok := w.(http.Flusher); ok {
-				flusher.Flush()
-			} else {
-				log.Println("Warning: Streaming not supported!")
-				break
-			}
-
-			time.Sleep(2 * time.Second) // Adjust the frequency of messages as needed
-
-			// Check if the client is still connected
-			if cn, ok := w.(http.CloseNotifier); ok {
-				select {
-				case <-cn.CloseNotify():
-					log.Println("Client has closed the connection")
+			if sseServer.StreamExists("rooms") {
+				var rooms []service.Chatroom
+				err := db.Select(&rooms, `select id, user_id, name, created_at from "room"`)
+				if err != nil {
+					log.Print(err)
+					// w.WriteHeader(501)
+					// fmt.Fprintf(w, `{ "error": "DB_FETCH", "message": "unable to fetch the results" }`)
 					return
-				default:
-					// continue
 				}
+
+				data, err := json.Marshal(rooms)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				// log.Print(rooms)
+				sseServer.Publish("rooms", &sse.Event{
+					Data: data,
+				})
 			}
+
+			time.Sleep(time.Second * 5)
 		}
-	})
+	}(db, sseServer)
 
 	r.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
