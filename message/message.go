@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-type SimpleMessage struct {
+type OutMessage struct {
 	Type         string    `json:"type"`
 	Message      string    `json:"message"`
 	Timestamp    time.Time `json:"timestamp"`
 	OnlyToSender bool      `json:"onlyme"`
+	UserId       string    `json:"uid"`
 	// optional
-	UserId *string `json:"uid"`
 	RoomId *string `json:"rid"`
 }
 
@@ -19,17 +19,16 @@ type simpleMessageToJson struct {
 	Type      string `json:"type"`
 	Message   string `json:"message"`
 	Timestamp string `json:"timestamp"`
+	UserId    string `json:"uid"`
 	// optional
-	UserId       *string `json:"uid"`
-	OnlyToSender *bool   `json:"onlyme"`
+	OnlyToSender bool    `json:"onlyme"`
 	RoomId       *string `json:"rid"`
 }
 
-func (sm *SimpleMessage) MarshalJSON() ([]byte, error) {
-	var onlyuser *bool
-
+func (sm *OutMessage) MarshalJSON() ([]byte, error) {
+	var onlyuser bool = false
 	if sm.OnlyToSender {
-		onlyuser = &sm.OnlyToSender
+		onlyuser = sm.OnlyToSender
 	}
 
 	s := simpleMessageToJson{
@@ -52,16 +51,16 @@ const (
 	TypeJoinRoom   = "join-room"
 )
 
-type Msg struct {
+type Options struct {
 	Message      string
 	Type         string
 	RoomId       *string
-	UserId       *string
+	UserId       string
 	OnlyToSender bool
 }
 
-func New(obj *Msg,
-) SimpleMessage {
+func New(obj *Options,
+) OutMessage {
 	var definedType string
 	simple := TypeSimple
 
@@ -71,7 +70,7 @@ func New(obj *Msg,
 		definedType = simple
 	}
 
-	return SimpleMessage{
+	return OutMessage{
 		Type:         definedType,
 		Message:      obj.Message,
 		RoomId:       obj.RoomId,
@@ -81,7 +80,7 @@ func New(obj *Msg,
 	}
 }
 
-func (o *SimpleMessage) Json() []byte {
+func (o *OutMessage) Json() []byte {
 	message, _ := json.Marshal(
 		o)
 

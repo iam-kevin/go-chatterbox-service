@@ -13,6 +13,7 @@ type Message struct {
 	Sender  Member
 }
 
+// This is the shape of the message as sent by the user
 type ChatMessage struct {
 	RoomId   *string `json:"room"`
 	Pin      *string `json:"pin"`
